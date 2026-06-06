@@ -1,17 +1,39 @@
 import { useEffect, useState } from "react";
 import { ref, onValue } from "firebase/database";
 import { db } from "./firebase";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
+
+import "./App.css";
 
 function App() {
   const [data, setData] = useState(null);
+  const [history, setHistory] = useState([]);
 
   useEffect(() => {
     const ivRef = ref(db, "IVDrop");
 
     const unsubscribe = onValue(ivRef, (snapshot) => {
       const val = snapshot.val();
-      console.log("Firebase:", val);
       setData(val || {});
+
+      // store history for graph
+      if (val?.dropsPerMin !== undefined) {
+        setHistory((prev) => [
+          ...prev.slice(-19),
+          {
+            time: new Date().toLocaleTimeString(),
+            rate: val.dropsPerMin,
+          },
+        ]);
+      }
     });
 
     return () => unsubscribe();
@@ -19,66 +41,65 @@ function App() {
 
   if (!data) {
     return (
-      <div style={styles.loading}>
+      <div className="loading">
         <h2>Connecting IV Monitor...</h2>
       </div>
     );
   }
 
+  const isDanger = data.dropsPerMin > 20 || data.dropsPerMin < 5;
+
   return (
-    <div style={styles.page}>
-      <h1>💉 IV DRIP MONITOR</h1>
+    <div className="page">
+      <h1 className="title">💉 IV DRIP MONITOR</h1>
 
-      <div style={styles.card}>
-        <h3>Total Drops</h3>
-        <h1>{data.totalDrops ?? 0}</h1>
+      {isDanger && (
+        <div className="alert">
+          ⚠ WARNING: Abnormal drip rate detected!
+        </div>
+      )}
+
+      <div className="grid">
+        <div className="card">
+          <h3>Total Drops</h3>
+          <h1>{data.totalDrops ?? 0}</h1>
+        </div>
+
+        <div className="card">
+          <h3>Drop Rate</h3>
+          <h1>{data.dropsPerMin?.toFixed(1) ?? 0} / min</h1>
+        </div>
+
+        <div className="card">
+          <h3>Last Update</h3>
+          <h1>
+            {data.lastUpdate
+              ? new Date(data.lastUpdate).toLocaleTimeString()
+              : "N/A"}
+          </h1>
+        </div>
+
+        <div className="card status">
+          <h3>Status</h3>
+          <h1>LIVE SYSTEM</h1>
+        </div>
       </div>
 
-      <div style={styles.card}>
-        <h3>Drop Rate</h3>
-        <h1>{data.dropsPerMin?.toFixed(1) ?? 0} / min</h1>
-      </div>
+      <div className="chartCard">
+        <h2>Drop Rate Trend</h2>
 
-      <div style={styles.card}>
-        <h3>Last Update</h3>
-        <h1>
-          {data.lastUpdate
-            ? new Date(data.lastUpdate).toLocaleTimeString()
-            : "N/A"}
-        </h1>
-      </div>
-
-      <div style={styles.card}>
-        <h3>Status</h3>
-        <h1 style={{ color: "#4dff88" }}>LIVE SYSTEM ACTIVE</h1>
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart data={history}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="time" />
+            <YAxis />
+            <Tooltip />
+            <Line type="monotone" dataKey="rate" stroke="#00d9ff" />
+          </LineChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
 }
-
-const styles = {
-  page: {
-    fontFamily: "Arial",
-    backgroundColor: "#0b1220",
-    color: "white",
-    minHeight: "100vh",
-    padding: 20,
-  },
-  card: {
-    backgroundColor: "#121c33",
-    padding: 20,
-    marginTop: 10,
-    borderRadius: 10,
-    textAlign: "center",
-  },
-  loading: {
-    height: "100vh",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#0b1220",
-    color: "white",
-  },
-};
 
 export default App;
