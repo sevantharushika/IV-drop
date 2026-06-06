@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ref, onValue } from "firebase/database";
 import { db } from "./firebase";
+
 import {
   LineChart,
   Line,
@@ -24,7 +25,7 @@ function App() {
       const val = snapshot.val();
       setData(val || {});
 
-      // store history for graph
+      // store history for chart
       if (val?.dropsPerMin !== undefined) {
         setHistory((prev) => [
           ...prev.slice(-19),
@@ -74,7 +75,7 @@ function App() {
           <h3>Last Update</h3>
           <h1>
             {data.lastUpdate
-              ? new Date(data.lastUpdate).toLocaleTimeString()
+              ? new Date(Number(data.lastUpdate)).toLocaleTimeString()
               : "N/A"}
           </h1>
         </div>
@@ -91,10 +92,16 @@ function App() {
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={history}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="time" />
+            <XAxis dataKey="time" tick={{ fontSize: 10 }} />
             <YAxis />
             <Tooltip />
-            <Line type="monotone" dataKey="rate" stroke="#00d9ff" />
+            <Line
+              type="monotone"
+              dataKey="rate"
+              stroke="#00d9ff"
+              strokeWidth={2}
+              dot={false}
+            />
           </LineChart>
         </ResponsiveContainer>
       </div>
